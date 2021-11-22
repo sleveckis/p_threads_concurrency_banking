@@ -25,8 +25,6 @@ verIn verify(int numAccs, account *accList, char *acc, char *pw);
 void* process_transaction(void *arg);
 void* update_balance(void *arg);
 void setUpAccounts(char *linebuf, size_t *len, FILE *file);
-int calcNumTransactions(char *linebuf, size_t *len, FILE *file);
-void advanceFilePointerToTransactions(char *linebuf, size_t *len, FILE *file);
 
 /* Part 2 Global Vars */
 account *accList;
@@ -35,7 +33,6 @@ int invalids = 0, deposits = 0, withdraws = 0, transfers = 0, checks = 0;
 pthread_t tid[MAX_THREAD];
 
 int main(int argc, char *argv[]){
-	int numTrans=0;
 	size_t len = 0;
 	char *linebuf = NULL;
 	FILE *file = fopen(argv[1], "r");
@@ -45,65 +42,22 @@ int main(int argc, char *argv[]){
 
 	accList = (account*)malloc(sizeof(account) * numAccs);
 
-	/* Set up account information  - go through the first portion of the file*/
+	/* Set up account information */
 	setUpAccounts(linebuf, &len, file);
-
-	/* Calculate number of transactions  - go through the rest of the file*/
-	numTrans = calcNumTransactions(linebuf, &len, file);
-	printf("Num transactions: %d\n", numTrans);
 	
-
-	/* Reset file pointer to begining of input file */
-	rewind(file);
-
-	/* Move file pointer to be at start of "transactions" portion
-	 * of input  file */
-	advanceFilePointerToTransactions(linebuf, &len, file);
-
-	/* Save all transactions into a char* array */
-	char *allTransactions[numTrans]; 
-
-	for(int i = 0; i < numTrans; i++){
-		allTransactions[i] = NULL;
-		len = 0;
-		getline(&allTransactions[i], &len, file);
-	}
-
-
-	/*
-	while(getline(&linebuf, &len, file)!= -1){
-		allTransactions[i] = (char*)malloc(sizeof(linebuf));
-		strcpy(allTransactions[i], linebuf);
-		i++;
-	}
-	*/
-
-
 	/* Now, accept all transaction commands line by line */
-	/*
 	while(getline(&linebuf, &len, file)!= -1){
 		char **linebuf_ptr = &linebuf;
 		process_transaction(linebuf_ptr);
 	}
-	*/
-
-
-
 
 	/* add reward for every account */
-	/*
 	addRewardToBalance(accList, numAccs);
 	printBalances(accList, numAccs);
-	*/
 
-	/* Part 1 */
 	free(linebuf);
 	free(accList);
 	fclose(file);
-	/* Part 2 */
-	for (int i = 0; i < numTrans; i++){
-		free(allTransactions[i]);
-	}
 }
 
 
@@ -216,6 +170,8 @@ void printBalances(account *accList, int numAccs){
 	}
 }
 
+
+
 void setUpAccounts(char *linebuf, size_t *len, FILE *file){
 
 	for(int i = 0; i < numAccs; i++){
@@ -236,29 +192,5 @@ void setUpAccounts(char *linebuf, size_t *len, FILE *file){
 		accList[i].reward_rate = atof(linebuf);
 
 		accList[i].transaction_tracter = 0;
-	}
-}
-
-int calcNumTransactions(char *linebuf, size_t *len, FILE *file){
-	int numTrans = 0;
-
-	while(getline(&linebuf, len, file)!= -1){
-		numTrans++;
-	}
-	return numTrans;
-
-}
-
-
-/* Kind of hacky, but this gets our file pointer back to the start
- * of the transactions portion of our input file */
-void advanceFilePointerToTransactions(char *linebuf, size_t *len, FILE *file){
-	for(int i = 0; i < numAccs; i++){
-		getline(&linebuf, len, file);
-		getline(&linebuf, len, file);
-		getline(&linebuf, len, file);
-		getline(&linebuf, len, file);
-		getline(&linebuf, len, file);
-
 	}
 }
