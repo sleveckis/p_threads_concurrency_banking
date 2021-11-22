@@ -5,6 +5,8 @@
 #include "account.h"
 #include <pthread.h>
 
+#include <unistd.h>
+
 #define MAX_THREAD 10
 
 typedef struct{
@@ -31,11 +33,11 @@ void advanceFilePointerToTransactions(char *linebuf, size_t *len, FILE *file);
 /* Part 2 Global Vars */
 account *accList;
 int numAccs;
+int numTrans = 0;
 int invalids = 0, deposits = 0, withdraws = 0, transfers = 0, checks = 0;
 pthread_t tid[MAX_THREAD];
 
 int main(int argc, char *argv[]){
-	int numTrans=0;
 	size_t len = 0;
 	char *linebuf = NULL;
 	FILE *file = fopen(argv[1], "r");
@@ -69,14 +71,7 @@ int main(int argc, char *argv[]){
 		getline(&allTransactions[i], &len, file);
 	}
 
-
-	/*
-	while(getline(&linebuf, &len, file)!= -1){
-		allTransactions[i] = (char*)malloc(sizeof(linebuf));
-		strcpy(allTransactions[i], linebuf);
-		i++;
-	}
-	*/
+	process_transaction(allTransactions);
 
 
 	/* Now, accept all transaction commands line by line */
@@ -91,10 +86,8 @@ int main(int argc, char *argv[]){
 
 
 	/* add reward for every account */
-	/*
 	addRewardToBalance(accList, numAccs);
 	printBalances(accList, numAccs);
-	*/
 
 	/* Part 1 */
 	free(linebuf);
@@ -108,47 +101,53 @@ int main(int argc, char *argv[]){
 
 
 void* process_transaction(void *arg){
-	/*  transform double void pointer down to
-	 *  single char pointer, and tokenize the
-	 *  string with str_filler */
-	char **linebuf_ptr = (char**)arg;
-	char *linebuf = *linebuf_ptr;
-	command_line transaction;
-	int verified;
-	transaction = str_filler(linebuf, " ");
-	
-	char action[128];
-	char acc[128];
-	char pw[128];
-	strcpy(action, transaction.command_list[0]);
-	strcpy(acc, transaction.command_list[1]);
-	strcpy(pw, transaction.command_list[2]);
 
-	verIn ver = verify(numAccs, accList, acc, pw);	
+	char **allTransactions = (char**)arg;
 
-	if(strcmp("D", action) == 0 && ver.verif){
-		deposit(ver.index, accList, atof(transaction.command_list[3]));
-		deposits++;
-
-	} else if(strcmp("W", action) == 0 && ver.verif){
-		withdraw(ver.index, accList, atof(transaction.command_list[3]));
-		withdraws++;
-
-	} else if(strcmp("T", action) ==0 && ver.verif){
-		transfer(ver.index, accList, atof(transaction.command_list[4]), transaction.command_list[3], numAccs);
-		transfers++;
-
-	} else if(strcmp("C", action) ==0 && ver.verif){
-		checks++;
-
-	} else if(!ver.verif){
-		invalids++;
-
-	} else {
-		printf("Extreme error\n");
+	/*
+	for (int i = 0; i < numTrans; i++){
+		sleep(1);
+		printf("Line %d: %s\n", i, allTransactions[i]);
 	}
+	*/
+	for(int i = 0; i < numTrans; i++){
+		command_line transaction;
+		int verified;
+		transaction = str_filler(allTransactions[i], " ");
+		
+		char action[128];
+		char acc[128];
+		char pw[128];
+		strcpy(action, transaction.command_list[0]);
+		strcpy(acc, transaction.command_list[1]);
+		strcpy(pw, transaction.command_list[2]);
 
-	free_command_line(&transaction);
+		verIn ver = verify(numAccs, accList, acc, pw);	
+
+		if(strcmp("D", action) == 0 && ver.verif){
+			deposit(ver.index, accList, atof(transaction.command_list[3]));
+			deposits++;
+
+		} else if(strcmp("W", action) == 0 && ver.verif){
+			withdraw(ver.index, accList, atof(transaction.command_list[3]));
+			withdraws++;
+
+		} else if(strcmp("T", action) ==0 && ver.verif){
+			transfer(ver.index, accList, atof(transaction.command_list[4]), transaction.command_list[3], numAccs);
+			transfers++;
+
+		} else if(strcmp("C", action) ==0 && ver.verif){
+			checks++;
+
+		} else if(!ver.verif){
+			invalids++;
+
+		} else {
+			printf("Extreme error\n");
+		}
+
+		free_command_line(&transaction);
+	}
 
 }
 
@@ -217,8 +216,9 @@ void printBalances(account *accList, int numAccs){
 }
 
 void setUpAccounts(char *linebuf, size_t *len, FILE *file){
-
+	printf("First line: %s\n", linebuf);
 	for(int i = 0; i < numAccs; i++){
+		/* skip the "index" line */
 		getline(&linebuf, len, file);
 
 		getline(&linebuf, len, file);
@@ -261,4 +261,7 @@ void advanceFilePointerToTransactions(char *linebuf, size_t *len, FILE *file){
 		getline(&linebuf, len, file);
 
 	}
+
+	/* We need one more line for some reason */
+	getline(&linebuf, len, file);
 }
